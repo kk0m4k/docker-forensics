@@ -1,0 +1,11 @@
+{
+    "ARTIFACTS": {
+        "BASE_PATH":"./artifacts/{}",
+        "EXECUTABLE_PATH":"BASE_PATH/executables/",
+        "LOG_JOURNALD_SERVICE":"TRUE"
+    },
+    "SYSLOGSERVER":{
+        "HOST": "1.1.1.1",
+        "PORT": 514
+    }
+}
