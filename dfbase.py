@@ -29,7 +29,7 @@ class DFbase():
 
     def __init__(self):
         self.storage_driver = ""
-        self.pid 
+        self.pid = 0
         self.data = {}
 
         self.IS_OVERLAYFS = False
