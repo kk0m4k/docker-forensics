@@ -8,6 +8,7 @@ import stat
 import time
 import json
 import hashlib
+import re
 from subprocess import Popen, PIPE
 from dflogging import *
 
@@ -324,6 +325,30 @@ class DFbase():
         stdout_dump, stderr_data = p.communicate()
 
     def search_hidden_directory(self):
-        pass
+        hidden_dirs_info = {}
+        hidden_dirs_list = []
+
+        if self.IS_OVERLAYFS:
+            path = self.get_overlay_upperlayer_path()
+        elif self.IS_AUFSFS:
+            path = self.get_aufs_container_branch_path()
+
+        p = re.compile(HIDDEN_DIR_REGX)
+        for dirpath, dir_entities, files in os.walk(path):
+            for dir_entity in dir_entities:
+                s = p.search(dir_entity)
+                if s is not None:
+                    dirname = os.path.join(dirpath, dir_entity)
+                    print('[Found] Hidden Directory: {}, mtime:{}, size:{}'.format(dirname, time.ctime(
+                        os.stat(dirname).st_mtime), os.stat(dirname).st_size))
+                    hidden_dirs_info['directory'] = dirname
+                    hidden_dirs_info['mtime'] = time.ctime(os.stat(dirname).st_mtime)
+                    hidden_dirs_info['mtime'] = os.stat(dirname).st_size
+                    hidden_dirs_list.append(hidden_dirs_info.copy())
+
+        hidden_path = self.artifacts_path + '/' + 'hidden-directory.json'
+        if len(hidden_dirs_list):
+            with open(hidden_path, 'w') as f:
+                json.dump(hidden_dirs_list, f, indent=4)
 
 
