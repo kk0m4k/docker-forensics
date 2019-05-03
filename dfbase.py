@@ -8,6 +8,7 @@ import stat
 import time
 import json
 import hashlib
+import re
 from subprocess import Popen, PIPE
 from dflogging import *
 
@@ -22,21 +23,22 @@ AUFS_IMAGE_BASE_PATH = "/var/lib/docker/aufs/"
 AUFS_IMAGE_LAYERDB_PATH = "/var/lib/docker/image/aufs/layerdb/mounts/"
 AUFS_WHITEOUT_PREFIX = ".wh."
 
+HIDDEN_DIR_REGX = "^[.\s].*$"
 
 
 class DFbase():
 
     def __init__(self):
-        self.storage_driver = str()
-        self.pid = int()
-        self.data = dict()
+        self.storage_driver = ""
+        self.pid = 0
+        self.data = {}
 
         self.IS_OVERLAYFS = False
         self.IS_AUFSFS = False
-        self.overlay_merged_path = str()
-        self.aufs_mnt_path = str()
-        self.aufs_container_branch_path = str()
-        self.aufs_container_layerdb_path = str()
+        self.overlay_merged_path = ""
+        self.aufs_mnt_path = ""
+        self.aufs_container_branch_path = ""
+        self.aufs_container_layerdb_path = ""
 
         df_log_initialize()
 
@@ -82,8 +84,8 @@ class DFbase():
 
     def setup_config(self):
 
-        self.artifacts_path = str()
-        self.executable_path = str()
+        self.artifacts_path = ""
+        self.executable_path = ""
 
         try:
             with open('config.json') as f:
@@ -134,9 +136,9 @@ class DFbase():
             },
 
         '''
-        items_list = list()
-        proc_item = list()
-        procs_dict = dict()
+        items_list = []
+        proc_item = []
+        procs_dict = {}
 
         p = Popen(DOCKER_TOP_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
         stdout_dump, stderr_data = p.communicate()
@@ -173,7 +175,7 @@ class DFbase():
 
     def copy_executable(self, procs_list):
         proc_list = []
-        md5sum = str()
+        md5sum = ""
         for proc in procs_list:
             proc_path = '/proc/' + proc.get('PID') + '/exe'
             p = Popen(READLINK_CMD.format(proc_path), shell=True, stdout=PIPE, stderr=PIPE)
@@ -321,5 +323,32 @@ class DFbase():
 
         p = Popen(LOG_JOURNALD.format(self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
         stdout_dump, stderr_data = p.communicate()
+
+    def search_hidden_directory(self):
+        hidden_dirs_info = {}
+        hidden_dirs_list = []
+
+        if self.IS_OVERLAYFS:
+            path = self.get_overlay_upperlayer_path()
+        elif self.IS_AUFSFS:
+            path = self.get_aufs_container_branch_path()
+
+        p = re.compile(HIDDEN_DIR_REGX)
+        for dirpath, dir_entities, files in os.walk(path):
+            for dir_entity in dir_entities:
+                s = p.search(dir_entity)
+                if s is not None:
+                    dirname = os.path.join(dirpath, dir_entity)
+                    print('[Found] Hidden Directory: {}, mtime:{}, size:{}'.format(dirname, time.ctime(
+                        os.stat(dirname).st_mtime), os.stat(dirname).st_size))
+                    hidden_dirs_info['directory'] = dirname
+                    hidden_dirs_info['mtime'] = time.ctime(os.stat(dirname).st_mtime)
+                    hidden_dirs_info['mtime'] = os.stat(dirname).st_size
+                    hidden_dirs_list.append(hidden_dirs_info.copy())
+
+        hidden_path = self.artifacts_path + '/' + 'hidden-directory.json'
+        if len(hidden_dirs_list):
+            with open(hidden_path, 'w') as f:
+                json.dump(hidden_dirs_list, f, indent=4)
 
 

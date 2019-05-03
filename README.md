@@ -9,6 +9,7 @@ but related docker hosts's artifcacts will be included.
 4. [x] specific files related to container: *config.v2.json, hostconfig.json, hostname, resolv.conf, resolv.conf.hash*
 5. [x] related logs of container: *container_id.json*
 6. [x] docker daemon related log (Journald only)
+7. [x] search hidden diretory
 
 
 ## How to run
