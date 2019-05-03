@@ -22,21 +22,22 @@ AUFS_IMAGE_BASE_PATH = "/var/lib/docker/aufs/"
 AUFS_IMAGE_LAYERDB_PATH = "/var/lib/docker/image/aufs/layerdb/mounts/"
 AUFS_WHITEOUT_PREFIX = ".wh."
 
+HIDDEN_DIR_REGX = "^[.\s].*\/$"
 
 
 class DFbase():
 
     def __init__(self):
-        self.storage_driver = str()
-        self.pid = int()
-        self.data = dict()
+        self.storage_driver = ""
+        self.pid 
+        self.data = {}
 
         self.IS_OVERLAYFS = False
         self.IS_AUFSFS = False
-        self.overlay_merged_path = str()
-        self.aufs_mnt_path = str()
-        self.aufs_container_branch_path = str()
-        self.aufs_container_layerdb_path = str()
+        self.overlay_merged_path = ""
+        self.aufs_mnt_path = ""
+        self.aufs_container_branch_path = ""
+        self.aufs_container_layerdb_path = ""
 
         df_log_initialize()
 
@@ -82,8 +83,8 @@ class DFbase():
 
     def setup_config(self):
 
-        self.artifacts_path = str()
-        self.executable_path = str()
+        self.artifacts_path = ""
+        self.executable_path = ""
 
         try:
             with open('config.json') as f:
@@ -134,9 +135,9 @@ class DFbase():
             },
 
         '''
-        items_list = list()
-        proc_item = list()
-        procs_dict = dict()
+        items_list = []
+        proc_item = []
+        procs_dict = {}
 
         p = Popen(DOCKER_TOP_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
         stdout_dump, stderr_data = p.communicate()
@@ -173,7 +174,7 @@ class DFbase():
 
     def copy_executable(self, procs_list):
         proc_list = []
-        md5sum = str()
+        md5sum = ""
         for proc in procs_list:
             proc_path = '/proc/' + proc.get('PID') + '/exe'
             p = Popen(READLINK_CMD.format(proc_path), shell=True, stdout=PIPE, stderr=PIPE)
@@ -321,5 +322,8 @@ class DFbase():
 
         p = Popen(LOG_JOURNALD.format(self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
         stdout_dump, stderr_data = p.communicate()
+
+    def search_hidden_directory(self):
+        pass
 
 

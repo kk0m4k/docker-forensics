@@ -71,7 +71,7 @@ def main():
     df.search_whiteout_files()
     df.copy_files_relatedto_container()
     df.get_log_on_journald_service()
-
+    df.search_hidden_directory()
 
 if __name__ == "__main__":
     main()
