@@ -23,7 +23,7 @@ AUFS_IMAGE_BASE_PATH = "/var/lib/docker/aufs/"
 AUFS_IMAGE_LAYERDB_PATH = "/var/lib/docker/image/aufs/layerdb/mounts/"
 AUFS_WHITEOUT_PREFIX = ".wh."
 
-HIDDEN_DIR_REGX = "^[.\s].*\/$"
+HIDDEN_DIR_REGX = "^[.\s].*$"
 
 
 class DFbase():
