@@ -388,5 +388,5 @@ class DFbase():
 
         diff_path = self.artifacts_path + '/' + 'diff_results.json'
         if len(diff_list):
-        with open(diff_path, 'w') as f:
-            json.dump(diff_list, f, indent=4)
+            with open(diff_path, 'w') as f:
+                json.dump(diff_list, f, indent=4)
