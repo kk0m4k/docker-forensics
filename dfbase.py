@@ -414,24 +414,24 @@ class DFbase():
         network_lines = network_dump.decode('utf-8')
         network_lines = network_lines.split("\n")
 
-        for network_item in network_lines:
-            if 'COMMAND' in network_item:
+        for network_line in network_lines:
+            if 'COMMAND' in network_line:
                 continue
-            elif len(network_item):
-                network_item.append(procs_item)
+            elif len(network_line):
+                network_item.append(network_line)
 
         for item in network_item:
-            x = item.split(maxsplit=9)
-            log.debug('NETWORK:{}, {}, {}, {}, {}, {}, {},{},{}'.format(x[0], x[1],x[2],x[3],x[4], x[5],x[6],x[7],x[8],x[9]))
+            x = item.split(maxsplit=8)
+            log.debug('NETWORK:{}, {}, {}, {}, {}, {}, {},{},{}'.format(x[0], x[1],x[2],x[3],x[4], x[5],x[6],x[7],x[8]))
             network_dict['COMMAND'] = x[0]
             network_dict['PID'] = x[1]
             network_dict['USER'] = x[2]
             network_dict['FD'] = x[3]
             network_dict['TYPE'] = x[4]
-            network_dict['DEVICE'] = x[4]
-            network_dict['SIZEOFF'] = x[4]
-            network_dict['NODE'] = x[4]
-            network_dict['NAME'] = x[4]
+            network_dict['DEVICE'] = x[5]
+            network_dict['SIZEOFF'] = x[6]
+            network_dict['NODE'] = x[7]
+            network_dict['NAME'] = x[8]
 
             items_list.append(network_dict.copy())
             print(items_list)
