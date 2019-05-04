@@ -451,7 +451,7 @@ class DFbase():
         date_dump, stderr_data = p.communicate()
 
         date_info = date_dump.decode('utf-8')
-        date_info = date_info.strip("\n")
+        date_info = date_info.strip("\r\n")
         date_dict['TIME'] = date_info
 
         items_list.append(date_dict)
@@ -470,7 +470,7 @@ class DFbase():
         uptime_dump, stderr_data = p.communicate()
 
         uptime_info = uptime_dump.decode('utf-8')
-        uptime_info = uptime_info.strip("\n")
+        uptime_info = uptime_info.strip("\r\n")
         uptime_dict['TIME'] = uptime_info
 
         items_list.append(uptime_dict)
