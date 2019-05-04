@@ -1,3 +1,4 @@
+
 #!/usr/bin/python3
 # -*- coding:utf-8 -*-
 __author__  = "Kim, Taehoon(kimfrancesco@gmail.com)"
@@ -18,6 +19,7 @@ DOCKER_TOP_CMD = "docker top {} -eo user,pid,ppid,stime,command"
 DOCKER_DIFF_CMD = "docker diff {}"
 DOCKER_DATE_CMD = "docker exec -it {} date"
 DOCKER_UPTIME_CMD = "docker exec -it {} uptime"
+DOCKER_CP_FROM_CONTAINER_TO_HOST_CMD = "docker cp {}:{} {}"
 NSENTER_CMD = "nsenter -t {} -n lsof -i"
 READLINK_CMD = "readlink  {}"
 
@@ -479,3 +481,8 @@ class DFbase():
         uptime_path = self.artifacts_path + '/' + 'uptime.json'
         with open(uptime_path, 'w') as f:
             json.dump(items_list, f, indent=4)
+
+
+    def get_passwd_file(self):
+        p = Popen(DOCKER_CP_FROM_CONTAINER_TO_HOST_CMD.format(self.container_id, '/etc/passwd', self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
+        dump, stderr_data = p.communicate()

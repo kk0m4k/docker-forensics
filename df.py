@@ -76,6 +76,7 @@ def main():
     df.search_hidden_directory()
     df.get_changed_history_using_diff_command()
     df.get_network_session_list()
+    df.get_passwd_file()
 
 if __name__ == "__main__":
     main()
