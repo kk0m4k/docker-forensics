@@ -265,7 +265,7 @@ class DFbase():
                 fname = os.path.join(dirpath, filename)
                 mode = os.stat(fname).st_mode
                 if stat.S_ISCHR(mode):
-                    print('[Found] Character device file: {}, mtime:{}, size:{}'.format(fname, time.ctime(
+                    log.debug('[Found] Character device file: {}, mtime:{}, size:{}'.format(fname, time.ctime(
                         os.stat(fname).st_mtime), os.stat(fname).st_size))
                     overlay_whiteout['file_type'] = 'CHARDEV'
                     overlay_whiteout['fname'] = fname
@@ -285,7 +285,7 @@ class DFbase():
             for filename in files:
                 if filename.startswith(AUFS_WHITEOUT_PREFIX):
                     fname = os.path.join(dirpath, filename)
-                    print('[Found] WhiteOut(.wh.*) files: {}, mtime:{}, size:{}'.format(fname, time.ctime(
+                    log.debug('[Found] WhiteOut(.wh.*) files: {}, mtime:{}, size:{}'.format(fname, time.ctime(
                         os.stat(fname).st_mtime), os.stat(fname).st_size))
                     aufs_whiteout['file_type'] = 'FILE'
                     aufs_whiteout['fname'] = fname
@@ -436,7 +436,7 @@ class DFbase():
             network_dict['NAME'] = x[8]
 
             items_list.append(network_dict.copy())
-            print(items_list)
+            #print(items_list)
 
         network_path = self.artifacts_path + '/' + 'network_session.json'
         with open(network_path, 'w') as f:
@@ -455,7 +455,7 @@ class DFbase():
         date_dict['TIME'] = date_info
 
         items_list.append(date_dict)
-        print(items_list)
+        log.debug(items_list)
 
         date_path = self.artifacts_path + '/' + 'datetime.json'
         with open(date_path, 'w') as f:
@@ -474,7 +474,7 @@ class DFbase():
         uptime_dict['TIME'] = uptime_info
 
         items_list.append(uptime_dict)
-        print(items_list)
+        log.debug(items_list)
 
         uptime_path = self.artifacts_path + '/' + 'uptime.json'
         with open(uptime_path, 'w') as f:
