@@ -343,7 +343,7 @@ class DFbase():
                         os.stat(dirname).st_mtime), os.stat(dirname).st_size))
                     hidden_dirs_info['directory'] = dirname
                     hidden_dirs_info['mtime'] = time.ctime(os.stat(dirname).st_mtime)
-                    hidden_dirs_info['mtime'] = os.stat(dirname).st_size
+                    hidden_dirs_info['size'] = os.stat(dirname).st_size
                     hidden_dirs_list.append(hidden_dirs_info.copy())
 
         hidden_path = self.artifacts_path + '/' + 'hidden-directory.json'
