@@ -16,6 +16,7 @@ from dflogging import *
 DOCKER_INSPECT_CMD = "docker inspect {}"
 DOCKER_TOP_CMD = "docker top {} -eo user,pid,ppid,stime,command"
 DOCKER_DIFF_CMD = "docker diff {}"
+NSENTER_CMD = "nsenter -t {} -n lsof -i"
 READLINK_CMD = "readlink  {}"
 
 LOG_JOURNALD = "journalctl -u docker -o json > {}/jouranld_docker.json"
@@ -390,3 +391,51 @@ class DFbase():
         if len(diff_list):
             with open(diff_path, 'w') as f:
                 json.dump(diff_list, f, indent=4)
+    
+
+    def get_network_session_list(self):
+        '''
+            root@ubuntu:/proc/21960# nsenter -t 21960 -n lsof -i
+            COMMAND     PID     USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+            apache2   22006     root    3u  IPv4 578777      0t0  TCP *:http (LISTEN)
+            apache2   22013 www-data    3u  IPv4 578777      0t0  TCP *:http (LISTEN)
+            apache2   22014 www-data    3u  IPv4 578777      0t0  TCP *:http (LISTEN)
+            anotherdo 22149     root    2u  IPv4 578171      0t0  TCP *:8000 (LISTEN)
+            anotherdo 22149     root    4u  IPv4 578172      0t0  TCP victim:8000->_gateway:54802 (ESTABLISHED)
+
+        '''
+        items_list = []
+        network_item = []
+        network_dict = {}
+
+        p = Popen(NSENTER_CMD.format(self.pid), shell=True, stdout=PIPE, stderr=PIPE)
+        network_dump, stderr_data = p.communicate()
+
+        network_lines = network_dump.decode('utf-8')
+        network_lines = network_lines.split("\n")
+
+        for network_item in network_lines:
+            if 'COMMAND' in network_item:
+                continue
+            elif len(network_item):
+                network_item.append(procs_item)
+
+        for item in network_item:
+            x = item.split(maxsplit=9)
+            log.debug('NETWORK:{}, {}, {}, {}, {}, {}, {},{},{}'.format(x[0], x[1],x[2],x[3],x[4], x[5],x[6],x[7],x[8],x[9]))
+            network_dict['COMMAND'] = x[0]
+            network_dict['PID'] = x[1]
+            network_dict['USER'] = x[2]
+            network_dict['FD'] = x[3]
+            network_dict['TYPE'] = x[4]
+            network_dict['DEVICE'] = x[4]
+            network_dict['SIZEOFF'] = x[4]
+            network_dict['NODE'] = x[4]
+            network_dict['NAME'] = x[4]
+
+            items_list.append(network_dict.copy())
+            print(items_list)
+
+        network_path = self.artifacts_path + '/' + 'network_session.json'
+        with open(network_path, 'w') as f:
+            json.dump(items_list, f, indent=4)
