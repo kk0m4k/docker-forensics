@@ -15,6 +15,7 @@ from dflogging import *
 
 DOCKER_INSPECT_CMD = "docker inspect {}"
 DOCKER_TOP_CMD = "docker top {} -eo user,pid,ppid,stime,command"
+DOCKER_DIFF_CMD = "docker diff {}"
 READLINK_CMD = "readlink  {}"
 
 LOG_JOURNALD = "journalctl -u docker -o json > {}/jouranld_docker.json"
@@ -351,4 +352,26 @@ class DFbase():
             with open(hidden_path, 'w') as f:
                 json.dump(hidden_dirs_list, f, indent=4)
 
+    def get_changed_history_using_diff_command(self, container_id):
+        diff_info = {}
+        diff_list = []
 
+        try:
+            p = Popen(DOCKER_DIFF_CMD.format(container_id), shell=True, stdout=PIPE, stderr=PIPE)
+            diff_dump, stderr_data = p.communicate()
+        except Exception as e:
+            print(e)
+            return False
+
+        changed_history = diff_dump.decode('utf-8')
+        changed_history = changed_history.split("\n")
+        #procs_lines = procs_lines.split()
+
+        print('Changed:{}'.format(changed_history))
+
+        """
+        diff_path = self.artifacts_path + '/' + 'diff_results.json'
+        if len(_dirs_list):
+            with open(diff_path, 'w') as f:
+                json.dump(hidden_dirs_list, f, indent=4)
+        """

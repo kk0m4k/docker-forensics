@@ -72,6 +72,7 @@ def main():
     df.copy_files_relatedto_container()
     df.get_log_on_journald_service()
     df.search_hidden_directory()
+    df.get_changed_history_using_diff_command()
 
 if __name__ == "__main__":
     main()
