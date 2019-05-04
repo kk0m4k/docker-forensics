@@ -15,6 +15,7 @@ from dflogging import *
 
 DOCKER_INSPECT_CMD = "docker inspect {}"
 DOCKER_TOP_CMD = "docker top {} -eo user,pid,ppid,stime,command"
+DOCKER_DIFF_CMD = "docker diff {}"
 READLINK_CMD = "readlink  {}"
 
 LOG_JOURNALD = "journalctl -u docker -o json > {}/jouranld_docker.json"
@@ -343,7 +344,7 @@ class DFbase():
                         os.stat(dirname).st_mtime), os.stat(dirname).st_size))
                     hidden_dirs_info['directory'] = dirname
                     hidden_dirs_info['mtime'] = time.ctime(os.stat(dirname).st_mtime)
-                    hidden_dirs_info['mtime'] = os.stat(dirname).st_size
+                    hidden_dirs_info['size'] = os.stat(dirname).st_size
                     hidden_dirs_list.append(hidden_dirs_info.copy())
 
         hidden_path = self.artifacts_path + '/' + 'hidden-directory.json'
@@ -352,3 +353,40 @@ class DFbase():
                 json.dump(hidden_dirs_list, f, indent=4)
 
 
+    def get_changed_history_using_diff_command(self):
+        diff_list = []
+
+        if self.IS_OVERLAYFS:
+            path = self.get_overlay_upperlayer_path()
+        elif self.IS_AUFSFS:
+            path = self.get_aufs_container_branch_path()
+
+        try:
+            p = Popen(DOCKER_DIFF_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+            diff_dump, stderr_data = p.communicate()
+        except Exception as e:
+            print(e)
+            return False
+
+        changed_entities = diff_dump.decode('utf-8')
+        changed_entities = changed_entities.split("\n")
+
+        for diff_entity in changed_entities:
+            diff_info = {}
+            if not len(diff_entity):
+                continue
+
+            category, entity = diff_entity.split(maxsplit=1)
+
+            diff_info[category] = entity
+            absolute_path = '{}{}'.format(path,entity)
+            diff_info['fullpath'] = absolute_path
+            diff_info['exist'] = "YES" if os.path.exists(absolute_path) else "No"
+            diff_info['mtime'] = time.ctime(os.stat(absolute_path).st_mtime) if os.path.exists(absolute_path) else "Null"
+            diff_info['size'] = os.stat(absolute_path).st_size if os.path.exists(absolute_path) else "Null"
+            diff_list.append(diff_info.copy())
+
+        diff_path = self.artifacts_path + '/' + 'diff_results.json'
+        if len(diff_list):
+            with open(diff_path, 'w') as f:
+                json.dump(diff_list, f, indent=4)
