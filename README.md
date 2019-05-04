@@ -10,6 +10,7 @@ but related docker hosts's artifcacts will be included.
 5. [x] related logs of container: *container_id.json*
 6. [x] docker daemon related log (Journald only)
 7. [x] search hidden diretory
+8. [x] get changed files or directories
 
 
 ## How to run
