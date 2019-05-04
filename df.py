@@ -68,6 +68,8 @@ def main():
 
     """
 
+    df.get_timeinfo()
+    df.get_uptime()
     df.search_whiteout_files()
     df.copy_files_relatedto_container()
     df.get_log_on_journald_service()

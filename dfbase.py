@@ -16,6 +16,8 @@ from dflogging import *
 DOCKER_INSPECT_CMD = "docker inspect {}"
 DOCKER_TOP_CMD = "docker top {} -eo user,pid,ppid,stime,command"
 DOCKER_DIFF_CMD = "docker diff {}"
+DOCKER_DATE_CMD = "docker exec -it {} date"
+DOCKER_UPTIME_CMD = "docker exec -it {} uptime"
 NSENTER_CMD = "nsenter -t {} -n lsof -i"
 READLINK_CMD = "readlink  {}"
 
@@ -438,4 +440,42 @@ class DFbase():
 
         network_path = self.artifacts_path + '/' + 'network_session.json'
         with open(network_path, 'w') as f:
+            json.dump(items_list, f, indent=4)
+    
+    def get_timeinfo(self):
+
+        items_list = []
+        date_dict = {}
+
+        p = Popen(DOCKER_DATE_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+        date_dump, stderr_data = p.communicate()
+
+        date_info = date_dump.decode('utf-8')
+        date_info = date_info.strip("\n")
+        date_dict['TIME'] = date_info
+
+        items_list.append(date_dict)
+        print(items_list)
+
+        date_path = self.artifacts_path + '/' + 'datetime.json'
+        with open(date_path, 'w') as f:
+            json.dump(items_list, f, indent=4)
+
+    def get_uptime(self):
+
+        items_list = []
+        uptime_dict = {}
+
+        p = Popen(DOCKER_UPTIME_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+        uptime_dump, stderr_data = p.communicate()
+
+        uptime_info = uptime_dump.decode('utf-8')
+        uptime_info = uptime_info.strip("\n")
+        uptime_dict['TIME'] = uptime_info
+
+        items_list.append(uptime_dict)
+        print(items_list)
+
+        uptime_path = self.artifacts_path + '/' + 'uptime.json'
+        with open(uptime_path, 'w') as f:
             json.dump(items_list, f, indent=4)
