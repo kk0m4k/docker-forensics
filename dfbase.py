@@ -16,6 +16,9 @@ from dflogging import *
 DOCKER_INSPECT_CMD = "docker inspect {}"
 DOCKER_TOP_CMD = "docker top {} -eo user,pid,ppid,stime,command"
 DOCKER_DIFF_CMD = "docker diff {}"
+DOCKER_DATE_CMD = "docker exec -it {} date"
+DOCKER_UPTIME_CMD = "docker exec -it {} uptime"
+NSENTER_CMD = "nsenter -t {} -n lsof -i"
 READLINK_CMD = "readlink  {}"
 
 LOG_JOURNALD = "journalctl -u docker -o json > {}/jouranld_docker.json"
@@ -262,7 +265,7 @@ class DFbase():
                 fname = os.path.join(dirpath, filename)
                 mode = os.stat(fname).st_mode
                 if stat.S_ISCHR(mode):
-                    print('[Found] Character device file: {}, mtime:{}, size:{}'.format(fname, time.ctime(
+                    log.debug('[Found] Character device file: {}, mtime:{}, size:{}'.format(fname, time.ctime(
                         os.stat(fname).st_mtime), os.stat(fname).st_size))
                     overlay_whiteout['file_type'] = 'CHARDEV'
                     overlay_whiteout['fname'] = fname
@@ -282,7 +285,7 @@ class DFbase():
             for filename in files:
                 if filename.startswith(AUFS_WHITEOUT_PREFIX):
                     fname = os.path.join(dirpath, filename)
-                    print('[Found] WhiteOut(.wh.*) files: {}, mtime:{}, size:{}'.format(fname, time.ctime(
+                    log.debug('[Found] WhiteOut(.wh.*) files: {}, mtime:{}, size:{}'.format(fname, time.ctime(
                         os.stat(fname).st_mtime), os.stat(fname).st_size))
                     aufs_whiteout['file_type'] = 'FILE'
                     aufs_whiteout['fname'] = fname
@@ -390,3 +393,89 @@ class DFbase():
         if len(diff_list):
             with open(diff_path, 'w') as f:
                 json.dump(diff_list, f, indent=4)
+    
+
+    def get_network_session_list(self):
+        '''
+            root@ubuntu:/proc/21960# nsenter -t 21960 -n lsof -i
+            COMMAND     PID     USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+            apache2   22006     root    3u  IPv4 578777      0t0  TCP *:http (LISTEN)
+            apache2   22013 www-data    3u  IPv4 578777      0t0  TCP *:http (LISTEN)
+            apache2   22014 www-data    3u  IPv4 578777      0t0  TCP *:http (LISTEN)
+            anotherdo 22149     root    2u  IPv4 578171      0t0  TCP *:8000 (LISTEN)
+            anotherdo 22149     root    4u  IPv4 578172      0t0  TCP victim:8000->_gateway:54802 (ESTABLISHED)
+
+        '''
+        items_list = []
+        network_item = []
+        network_dict = {}
+
+        p = Popen(NSENTER_CMD.format(self.pid), shell=True, stdout=PIPE, stderr=PIPE)
+        network_dump, stderr_data = p.communicate()
+
+        network_lines = network_dump.decode('utf-8')
+        network_lines = network_lines.split("\n")
+
+        for network_line in network_lines:
+            if 'COMMAND' in network_line:
+                continue
+            elif len(network_line):
+                network_item.append(network_line)
+
+        for item in network_item:
+            x = item.split(maxsplit=8)
+            log.debug('NETWORK:{}, {}, {}, {}, {}, {}, {},{},{}'.format(x[0], x[1],x[2],x[3],x[4], x[5],x[6],x[7],x[8]))
+            network_dict['COMMAND'] = x[0]
+            network_dict['PID'] = x[1]
+            network_dict['USER'] = x[2]
+            network_dict['FD'] = x[3]
+            network_dict['TYPE'] = x[4]
+            network_dict['DEVICE'] = x[5]
+            network_dict['SIZEOFF'] = x[6]
+            network_dict['NODE'] = x[7]
+            network_dict['NAME'] = x[8]
+
+            items_list.append(network_dict.copy())
+            #print(items_list)
+
+        network_path = self.artifacts_path + '/' + 'network_session.json'
+        with open(network_path, 'w') as f:
+            json.dump(items_list, f, indent=4)
+    
+    def get_timeinfo(self):
+
+        items_list = []
+        date_dict = {}
+
+        p = Popen(DOCKER_DATE_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+        date_dump, stderr_data = p.communicate()
+
+        date_info = date_dump.decode('utf-8')
+        date_info = date_info.strip("\r\n")
+        date_dict['TIME'] = date_info
+
+        items_list.append(date_dict)
+        log.debug(items_list)
+
+        date_path = self.artifacts_path + '/' + 'datetime.json'
+        with open(date_path, 'w') as f:
+            json.dump(items_list, f, indent=4)
+
+    def get_uptime(self):
+
+        items_list = []
+        uptime_dict = {}
+
+        p = Popen(DOCKER_UPTIME_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+        uptime_dump, stderr_data = p.communicate()
+
+        uptime_info = uptime_dump.decode('utf-8')
+        uptime_info = uptime_info.strip("\r\n")
+        uptime_dict['TIME'] = uptime_info
+
+        items_list.append(uptime_dict)
+        log.debug(items_list)
+
+        uptime_path = self.artifacts_path + '/' + 'uptime.json'
+        with open(uptime_path, 'w') as f:
+            json.dump(items_list, f, indent=4)
