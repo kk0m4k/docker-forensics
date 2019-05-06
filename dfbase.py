@@ -215,7 +215,7 @@ class DFbase():
             proc['MD5'] = md5sum
             proc_list.append(proc.copy())
 
-        procs_path = self.artifacts_path + '/' + 'processes_running.json'
+        procs_path = self.artifacts_path + '/' + 'process.json'
         with open(procs_path, 'w') as f:
             json.dump(proc_list, f, indent=4)
 
@@ -352,7 +352,7 @@ class DFbase():
                     hidden_dirs_info['size'] = os.stat(dirname).st_size
                     hidden_dirs_list.append(hidden_dirs_info.copy())
 
-        hidden_path = self.artifacts_path + '/' + 'hidden-directory.json'
+        hidden_path = self.artifacts_path + '/' + 'hidden_directory.json'
         if len(hidden_dirs_list):
             with open(hidden_path, 'w') as f:
                 json.dump(hidden_dirs_list, f, indent=4)
@@ -391,7 +391,7 @@ class DFbase():
             diff_info['size'] = os.stat(absolute_path).st_size if os.path.exists(absolute_path) else "Null"
             diff_list.append(diff_info.copy())
 
-        diff_path = self.artifacts_path + '/' + 'diff_results.json'
+        diff_path = self.artifacts_path + '/' + 'diff.json'
         if len(diff_list):
             with open(diff_path, 'w') as f:
                 json.dump(diff_list, f, indent=4)
