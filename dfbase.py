@@ -404,8 +404,27 @@ class DFbase():
         if len(diff_list):
             with open(diff_path, 'w') as f:
                 json.dump(diff_list, f, indent=4)
-    
+        
+        for diff_entity in diff_list:
+            if diff_entity['fullpath'] and self.IS_OVERLAYFS:
+                log.debug('DIFF_Overlay:{}'.format(diff_entity['fullpath']))
+                if os.path.isfile(diff_entity['fullpath']) and os.access(diff_entity['fullpath'], os.X_OK):
+                    md5sum = self.get_md5sum('{}'.format(diff_entity['fullpath']))
+                    log.debug('md5sum:{}'.format(md5sum))
+                    COPY_CMD = 'cp -f {} {}{}_{}'.format(diff_entity['fullpath'], self.diff_files_path, diff_entity['fullpath'].rsplit('/', 1)[1], md5sum)
+                    log.debug('DIFF CMD:{}'.format(COPY_CMD))
+                    os.system(COPY_CMD)
 
+            elif diff_entity['fullpath']  and self.IS_AUFSFS:
+                log.debug('DIFF_Aufs:{}'.format(diff_entity['fullpath']))
+                if os.path.isfile(diff_entity['fullpath']) and os.access(diff_entity['fullpath'], os.X_OK): 
+                    md5sum = self.get_md5sum('{}'.format(diff_entity['fullpath']))
+                    log.debug('md5sum:{}'.format(md5sum))
+                    COPY_CMD = 'cp -f {} {}{}_{}'.format(diff_entity['fullpath'], self.diff_files_path, diff_entity['fullpath'].rsplit('/', 1)[1], md5sum)
+                    log.debug('DIFF CMD:{}'.format(COPY_CMD))
+                    os.system(COPY_CMD)
+
+    
     def get_network_session_list(self):
         '''
             root@ubuntu:/proc/21960# nsenter -t 21960 -n lsof -i
