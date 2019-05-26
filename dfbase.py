@@ -92,6 +92,7 @@ class DFbase():
 
         self.artifacts_path = ""
         self.executable_path = ""
+        self.diff_files_path = ""
 
         try:
             with open('config.json') as f:
@@ -104,6 +105,8 @@ class DFbase():
         self.artifacts_path = config['ARTIFACTS']['BASE_PATH'].format(self.container_id)
         self.executable_path = config['ARTIFACTS']['EXECUTABLE_PATH']
         self.executable_path = self.executable_path.replace('BASE_PATH', self.artifacts_path)
+        self.diff_files_path = config['ARTIFACTS']['DIFF_FILES_PATH']
+        self.diff_files_path = self.diff_files_path.replace('BASE_PATH', self.artifacts_path)
         self.log_journald = (True if config['ARTIFACTS']['LOG_JOURNALD_SERVICE'] == "TRUE" else False)
 
         if not os.path.exists(self.artifacts_path):
@@ -116,6 +119,12 @@ class DFbase():
             os.makedirs(self.executable_path, mode=0o700)
         elif not os.path.isdir(self.executable_path):
             log.debug('[Error]' + self.executable_path +' is not a directory')
+            return False
+
+        if not os.path.exists(self.diff_files_path):
+            os.makedirs(self.diff_files_path, mode=0o700)
+        elif not os.path.isdir(self.diff_files_path):
+            log.debug('[Error]' + self.diff_files_path +' is not a directory')
             return False
 
     def save_inspect_for_container(self):
@@ -215,7 +224,7 @@ class DFbase():
             proc['MD5'] = md5sum
             proc_list.append(proc.copy())
 
-        procs_path = self.artifacts_path + '/' + 'processes_running.json'
+        procs_path = self.artifacts_path + '/' + 'process.json'
         with open(procs_path, 'w') as f:
             json.dump(proc_list, f, indent=4)
 
@@ -352,7 +361,7 @@ class DFbase():
                     hidden_dirs_info['size'] = os.stat(dirname).st_size
                     hidden_dirs_list.append(hidden_dirs_info.copy())
 
-        hidden_path = self.artifacts_path + '/' + 'hidden-directory.json'
+        hidden_path = self.artifacts_path + '/' + 'hidden_directory.json'
         if len(hidden_dirs_list):
             with open(hidden_path, 'w') as f:
                 json.dump(hidden_dirs_list, f, indent=4)
@@ -391,12 +400,31 @@ class DFbase():
             diff_info['size'] = os.stat(absolute_path).st_size if os.path.exists(absolute_path) else "Null"
             diff_list.append(diff_info.copy())
 
-        diff_path = self.artifacts_path + '/' + 'diff_results.json'
+        diff_path = self.artifacts_path + '/' + 'diff.json'
         if len(diff_list):
             with open(diff_path, 'w') as f:
                 json.dump(diff_list, f, indent=4)
-    
+        
+        for diff_entity in diff_list:
+            if diff_entity['fullpath'] and self.IS_OVERLAYFS:
+                log.debug('DIFF_Overlay:{}'.format(diff_entity['fullpath']))
+                if os.path.isfile(diff_entity['fullpath']) and os.access(diff_entity['fullpath'], os.X_OK):
+                    md5sum = self.get_md5sum('{}'.format(diff_entity['fullpath']))
+                    log.debug('md5sum:{}'.format(md5sum))
+                    COPY_CMD = 'cp -f {} {}{}_{}'.format(diff_entity['fullpath'], self.diff_files_path, diff_entity['fullpath'].rsplit('/', 1)[1], md5sum)
+                    log.debug('DIFF CMD:{}'.format(COPY_CMD))
+                    os.system(COPY_CMD)
 
+            elif diff_entity['fullpath']  and self.IS_AUFSFS:
+                log.debug('DIFF_Aufs:{}'.format(diff_entity['fullpath']))
+                if os.path.isfile(diff_entity['fullpath']) and os.access(diff_entity['fullpath'], os.X_OK): 
+                    md5sum = self.get_md5sum('{}'.format(diff_entity['fullpath']))
+                    log.debug('md5sum:{}'.format(md5sum))
+                    COPY_CMD = 'cp -f {} {}{}_{}'.format(diff_entity['fullpath'], self.diff_files_path, diff_entity['fullpath'].rsplit('/', 1)[1], md5sum)
+                    log.debug('DIFF CMD:{}'.format(COPY_CMD))
+                    os.system(COPY_CMD)
+
+    
     def get_network_session_list(self):
         '''
             root@ubuntu:/proc/21960# nsenter -t 21960 -n lsof -i

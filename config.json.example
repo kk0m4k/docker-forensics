@@ -2,6 +2,7 @@
     "ARTIFACTS": {
         "BASE_PATH":"./artifacts/{}",
         "EXECUTABLE_PATH":"BASE_PATH/executables/",
+        "DIFF_FILES_PATH":"BASE_PATH/diff_files/",
         "LOG_JOURNALD_SERVICE":"TRUE"
     },
     "SYSLOGSERVER":{
