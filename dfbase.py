@@ -92,6 +92,7 @@ class DFbase():
 
         self.artifacts_path = ""
         self.executable_path = ""
+        self.diff_files_path = ""
 
         try:
             with open('config.json') as f:
@@ -104,6 +105,8 @@ class DFbase():
         self.artifacts_path = config['ARTIFACTS']['BASE_PATH'].format(self.container_id)
         self.executable_path = config['ARTIFACTS']['EXECUTABLE_PATH']
         self.executable_path = self.executable_path.replace('BASE_PATH', self.artifacts_path)
+        self.diff_files_path = config['ARTIFACTS']['DIFF_FILES_PATH']
+        self.diff_files_path = self.diff_files_path.replace('BASE_PATH', self.artifacts_path)
         self.log_journald = (True if config['ARTIFACTS']['LOG_JOURNALD_SERVICE'] == "TRUE" else False)
 
         if not os.path.exists(self.artifacts_path):
@@ -116,6 +119,12 @@ class DFbase():
             os.makedirs(self.executable_path, mode=0o700)
         elif not os.path.isdir(self.executable_path):
             log.debug('[Error]' + self.executable_path +' is not a directory')
+            return False
+
+        if not os.path.exists(self.diff_files_path):
+            os.makedirs(self.diff_files_path, mode=0o700)
+        elif not os.path.isdir(self.diff_files_path):
+            log.debug('[Error]' + self.diff_files_path +' is not a directory')
             return False
 
     def save_inspect_for_container(self):
