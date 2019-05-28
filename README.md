@@ -4,7 +4,7 @@ but related docker hosts's artifcacts will be included.
 
 ## Artifacts
 1.  [x] Whiteout: AUFS, Overlay/Overlay2.
-2.  [x] Binary and metadata of Process running within container.
+2.  [x] Binary and metadata of Process running within container, and aquisition for Executables
 3.  [x] Result of *docker inspect command*
 4.  [x] Specific files related to container: *config.v2.json, hostconfig.json, hostname, resolv.conf, resolv.conf.hash*
 5.  [x] Related logs of container: *container_id.json*
@@ -13,7 +13,7 @@ but related docker hosts's artifcacts will be included.
 8.  [x] Changed Files or Directories
 9.  [x] Open Port and Network Session (using nsenter)
 10. [x] System datetime and uptime
-
+11. [x] Acquisition for exectuable binary/script  created on Container Layer
 
 ## How to run
 ```
