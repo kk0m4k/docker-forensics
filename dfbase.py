@@ -1,6 +1,7 @@
 
 #!/usr/bin/python3
 # -*- coding:utf-8 -*-
+
 __author__  = "Kim, Taehoon(kimfrancesco@gmail.com)"
 
 import os
@@ -35,7 +36,7 @@ class DFbase():
     LOG_ERROR_COLOR ='\x1b[31;1m'
     LOG_WARNING_COLOR ='\x1b[33;1m'
     LOG_INFO_COLOR ='\x1b[0m'
-    LOG_DEBUG_COLOR ='\x1b[35m;1m'
+    LOG_DEBUG_COLOR ='\x1b[35m'
 
     def __init__(self):
         self.storage_driver = ""
@@ -52,7 +53,7 @@ class DFbase():
         df_log_initialize()
 
     def check_privilege(self):
-        log.debug('run with GETUID:{}'.format(os.getuid()))
+        log.debug('{}[*]{} run with GETUID:{}'.format(DFbase.LOG_DEBUG_COLOR, DFbase.LOG_INFO_COLOR, os.getuid()))
         return True if (os.getuid() == 0) else False
 
     def get_details_using_inspect_command(self, container_id):
@@ -69,40 +70,44 @@ class DFbase():
         try:
             p = Popen(DOCKER_INSPECT_CMD.format(container_id), shell=True, stdout=PIPE, stderr=PIPE)
             data_dump, stderr_data = p.communicate()
-
-            log.debug(json.dumps(json.loads(data_dump), indent=4))
+            log.debug('{}[*]{} Inspect result:{}'.format(DFbase.LOG_DEBUG_COLOR,
+                        DFbase.LOG_INFO_COLOR, 
+                        json.dumps(json.loads(data_dump)),indent=4))
 
         except Exception as e:
-            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, e))
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR,
+                        DFbase.LOG_INFO_COLOR, e))
             return False
 
         self.data = json.loads(data_dump.decode('utf-8'))
 
         if not self.data:
-            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, 'Please check if container id is valid'))
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR,
+                        DFbase.LOG_INFO_COLOR,
+                        'Please check if container id is valid'))
             return False
 
         self.storage_driver = self.data[0]['Driver']
         self.pid = self.data[0]['State']['Pid']
         self.container_id = self.data[0]['Id']
 
-        log.debug('storage_driver:{}'.format(self.storage_driver))
+        log.debug('{}[*]{} Storage Driver: {}'.format(DFbase.LOG_DEBUG_COLOR,
+                   DFbase.LOG_INFO_COLOR, self.storage_driver))
         if self.storage_driver == 'overlay2' or self.storage_driver == 'overlay':
             self.IS_OVERLAYFS = True
             self.overlay_upperdir_path = self.data[0]['GraphDriver']['Data']['UpperDir']
             self.overlay_merged_path = self.data[0]['GraphDriver']['Data']['MergedDir']
-            log.debug('Driver:{}, UppderDir:{}'.format(self.storage_driver, self.overlay_merged_path))
-            log.debug('Driver:{}, UppderDir:{}'.format(self.storage_driver, self.overlay_upperdir_path))
         elif self.storage_driver == 'aufs':
             self.IS_AUFSFS = True
             self.aufs_container_layerdb_path = AUFS_IMAGE_LAYERDB_PATH + self.data[0]['Id']
-            log.debug('Driver:{}, ContainerDir:{}'.format(self.storage_driver,
-                                                          '/var/lib/docker/containers/' + self.data[0]['Id']))
         else:
-            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, 'This storage driver does not support'))
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_DEBUG_COLOR,
+                        DFbase.LOG_INFO_COLOR,
+                        'This storage driver does not support'))
             False
 
-        log.debug("container id : {}".format(self.container_id))
+        log.debug('{}[*]{} Container id: {}'.format(DFbase.LOG_DEBUG_COLOR,
+                        DFbase.LOG_INFO_COLOR, self.container_id))
         return True
 
 
@@ -116,12 +121,15 @@ class DFbase():
             with open('config.json') as f:
                 config = json.load(f)
         except FileNotFoundError as e:
-            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, e))
-            print('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, 
-                            'Please copy config.json.example to confing.json'))
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR,
+                        DFbase.LOG_INFO_COLOR, e))
+            print('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                    DFbase.LOG_INFO_COLOR, 
+                    'Please copy config.json.example to confing.json'))
             return False
         except Exception as e:
-            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, e))
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
             return False
 
         self.artifacts_path = config['ARTIFACTS']['BASE_PATH'].format(self.container_id)
@@ -131,50 +139,52 @@ class DFbase():
         self.diff_files_path = self.diff_files_path.replace('BASE_PATH', self.artifacts_path)
         self.log_journald = (True if config['ARTIFACTS']['LOG_JOURNALD_SERVICE'] == "TRUE" else False)
 
-        for x_path in [self.artifacts_path, 
-                       self.executable_path,
-                       self.diff_files_path]:
+        for x_path in [self.artifacts_path, self.executable_path, self.diff_files_path]:
             if not os.path.exists(x_path):
-                os.makedirs(x_path, mode=0o700)
+                try:
+                    os.makedirs(x_path, mode=0o700)
+                except Exception as e:
+                    log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR,
+                                DFbase.LOG_INFO_COLOR, e))
+                    print('{}[*]{} {}:{}'.format(DFbase.LOG_ERROR_COLOR,
+                            DFbase.LOG_INFO_COLOR,
+                            'Failed when creating directory', x_path))
+                    return False
 
         return True
 
+
     def save_inspect_for_container(self):
         inspect_output = self.artifacts_path + '/' + 'inspect_command.json'
-        with open(inspect_output, 'w') as f:
-            json.dump(self.data, f, indent=4)
+        try:
+            with open(inspect_output, 'w') as f:
+                json.dump(self.data, f, indent=4)
+        except Exception as e:
+                log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR,
+                            DFbase.LOG_INFO_COLOR, e))
+                return False
+        return True
+
 
     def get_processes_list_within_container(self):
         """ Get process list within container
             Retruns
-                List: dictionary type of process list
-        [
-            {
-                "Id": "31df7fe258be4c78ca0a15cd7903ead5f4ba3ff3f63a0755a3da00fbc39e2ea2",
-                "Created": "2018-08-25T08:18:27.596162472Z",
-                "Path": "nginx",
-                "Args": [
-                     "-g",
-                    "daemon off;"
-                ],
-                "State": {
-                    "Status": "running",
-                    "Pid": 3691,
-                    "StartedAt": "2018-08-26T12:25:09.283556466Z",
-                    "FinishedAt": "2018-08-26T12:23:24.546575093Z"
-            },
-
+                bool: True if successful, False otherwise.
         """
         items_list = []
         proc_item = []
         procs_dict = {}
 
-        p = Popen(DOCKER_TOP_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
-        stdout_dump, stderr_data = p.communicate()
+        try:
+            p = Popen(DOCKER_TOP_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+            stdout_dump, stderr_data = p.communicate()
+        except Exception as e:
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR,
+                        DFbase.LOG_INFO_COLOR,e))
+            return False
 
         procs_lines = stdout_dump.decode('utf-8')
         procs_lines = procs_lines.split("\n")
-        #procs_lines = procs_lines.split()
 
         for procs_item in procs_lines:
             if 'USER' in procs_item:
@@ -184,7 +194,8 @@ class DFbase():
 
         for item in proc_item:
             x = item.split(None, 4)
-            log.debug('PID:{}, {}, {}, {}, {}'.format(x[0], x[1],x[2],x[3],x[4]))
+            log.debug('{}[*]{} PID:{}, {}, {}, {}, {}'.format(DFbase.LOG_DEBUG_COLOR, 
+                        DFbase.LOG_INFO_COLOR, x[0], x[1],x[2],x[3],x[4]))
             procs_dict['USER'] = x[0]
             procs_dict['PID'] = x[1]
             procs_dict['PPID'] = x[2]
@@ -193,13 +204,13 @@ class DFbase():
 
             items_list.append(procs_dict.copy())
 
-        #print(items_list)
-
         procs_path = self.artifacts_path + '/' + 'top_command.json'
         with open(procs_path, 'w') as f:
             json.dump(items_list, f, indent=4)
 
         self.copy_executable(items_list)
+
+        return True
 
 
     def copy_executable(self, procs_list):
@@ -207,16 +218,24 @@ class DFbase():
         md5sum = ""
         for proc in procs_list:
             proc_path = '/proc/' + proc.get('PID') + '/exe'
-            p = Popen(READLINK_CMD.format(proc_path), shell=True, stdout=PIPE, stderr=PIPE)
-            stdout_dump, stderr_data = p.communicate()
+            try:
+                p = Popen(READLINK_CMD.format(proc_path), shell=True, stdout=PIPE, stderr=PIPE)
+                stdout_dump, stderr_data = p.communicate()
+            except Excpetion as e:
+                log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                            DFbase.LOG_INFO_COLOR, e))
+                continue
+
             exe_path = stdout_dump.decode('utf-8')
 
             if exe_path and self.IS_OVERLAYFS:
                 if os.path.isfile('{}{}'.format(self.overlay_merged_path, exe_path.strip('\n'))):
                     md5sum = self.get_md5sum('{}{}'.format(self.overlay_merged_path, exe_path.strip('\n')))
-                    log.debug('md5sum:{}'.format(md5sum))
+                    log.debug('{}[*]{} md5sum:{}'.format(DFbase.LOG_DEBUG_COLOR, 
+                                DFbase.LOG_INFO_COLOR, md5sum))
                     COPY_CMD = 'cp -f {}{} {}{}_{}'.format(self.overlay_merged_path, exe_path.strip('\n'), self.executable_path,exe_path.rsplit('/', 1)[1].strip('\n'), md5sum)
-                    log.debug('PID:{}, CMD:{}'.format(proc.get('PID'), COPY_CMD))
+                    log.debug('{}[*]{} PID:{}, CMD:{}'.format(DFbase.LOG_DEBUG_COLOR, 
+                                DFbase.LOG_INFO_COLOR, proc.get('PID'), COPY_CMD))
                     os.system(COPY_CMD)
                     proc['EXECUTABLE'] = '{}{}'.format(self.overlay_merged_path, exe_path.strip('\n'))
                 else:
@@ -227,9 +246,11 @@ class DFbase():
                 if os.path.isfile('{}{}'.format(self.aufs_mnt_path, exe_path.strip('\n'))):
                     self.aufs_mnt_path = self.get_aufs_container_mnt_path()
                     md5sum = self.get_md5sum('{}{}'.format(self.aufs_mnt_path,  exe_path.strip('\n')))
-                    log.debug('md5sum:{}'.format(md5sum))
+                    log.debug('{}[*]{} md5sum:{}'.format(DFbase.LOG_DEBUG_COLOR, 
+                                DFbase.LOG_INFO_COLOR, md5sum))
                     COPY_CMD = 'cp -f {}{} {}{}_{}'.format(self.aufs_mnt_path, exe_path.strip('\n'), self.executable_path, exe_path.rsplit('/', 1)[1].strip('\n'), md5sum)
-                    log.debug('PID:{}, CMD:{}'.format(proc.get('PID'), COPY_CMD))
+                    log.debug('{}[*]{} PID:{}, CMD:{}'.format(DFbase.LOG_DEBUG_COLOR, 
+                                DFbase.LOG_INFO_COLOR, proc.get('PID'), COPY_CMD))
                     os.system(COPY_CMD)
                     proc['EXECUTABLE'] = '{}{}'.format(self.aufs_mnt_path, exe_path.strip('\n'))
                 else:
@@ -242,6 +263,8 @@ class DFbase():
         with open(procs_path, 'w') as f:
             json.dump(proc_list, f, indent=4)
 
+        return True
+
 
     def get_aufs_container_mnt_path(self):
         mountid_file = self.aufs_container_layerdb_path + '/mount-id'
@@ -250,7 +273,8 @@ class DFbase():
         return AUFS_IMAGE_BASE_PATH + 'mnt/' + line
 
     def get_md5sum(self, filepath):
-        log.debug('md5sum target file:{}'.format(filepath))
+        log.debug('{}[*]{} md5sum target file:{}'.format(DFbase.LOG_DEBUG_COLOR, 
+                    DFbase.LOG_INFO_COLOR, filepath))
         md5sum = hashlib.md5()
         try:
             with open(filepath, 'rb') as f:
@@ -318,7 +342,6 @@ class DFbase():
                     aufs_whiteout['size'] = os.stat(fname).st_size
                     aufs_wh_list.append(aufs_whiteout.copy())
 
-
             for dir in dirs:
                 if dir.startswith(AUFS_WHITEOUT_PREFIX):
                     dirname = os.path.join(dirpath, dir)
@@ -341,17 +364,31 @@ class DFbase():
 
         for dirpath, dirs, files in os.walk(container_path):
             for file in files:
-                log.debug("dirpath:{}, dirs:{}, files:{}".format(dirpath, dirs, files))
+                log.debug("{}[*]{} dirpath:{}, dirs:{}, files:{}"
+                            .format(DFbase.LOG_DEBUG_COLOR,
+                            DFbase.LOG_INFO_COLOR,
+                            dirpath, dirs, files))
                 COPY_CMD = 'cp -f {}/{} {}'.format(dirpath, file, self.artifacts_path)
                 os.system(COPY_CMD)
 
+
     def get_log_on_journald_service(self):
         if self.log_journald is False:
-            print('This docker host does not use journald system')
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR,
+                        'This docker host does not use journald system'))
             return False
 
-        p = Popen(LOG_JOURNALD.format(self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
-        stdout_dump, stderr_data = p.communicate()
+        try:
+            p = Popen(LOG_JOURNALD.format(self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
+            stdout_dump, stderr_data = p.communicate()
+        except Exception as e:
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
+            return False
+
+        return True
+
 
     def search_hidden_directory(self):
         hidden_dirs_info = {}
@@ -380,6 +417,8 @@ class DFbase():
             with open(hidden_path, 'w') as f:
                 json.dump(hidden_dirs_list, f, indent=4)
 
+        return True
+
 
     def get_changed_history_using_diff_command(self):
         diff_list = []
@@ -393,7 +432,8 @@ class DFbase():
             p = Popen(DOCKER_DIFF_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
             diff_dump, stderr_data = p.communicate()
         except Exception as e:
-            print(e)
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
             return False
 
         changed_entities = diff_dump.decode('utf-8')
@@ -421,7 +461,10 @@ class DFbase():
         
         for diff_entity in diff_list:
             if diff_entity['fullpath'] and self.IS_OVERLAYFS:
-                log.debug('DIFF_Overlay:{}'.format(diff_entity['fullpath']))
+                log.debug('{}[*]{} DIFF_Overlay:{}'
+                            .format(DFbase.LOG_DEBUG_COLOR,
+                            DFbase.LOG_INFO_COLOR,
+                            diff_entity['fullpath']))
                 if os.path.isfile(diff_entity['fullpath']) and os.access(diff_entity['fullpath'], os.X_OK):
                     md5sum = self.get_md5sum('{}'.format(diff_entity['fullpath']))
                     log.debug('md5sum:{}'.format(md5sum))
@@ -437,6 +480,8 @@ class DFbase():
                     COPY_CMD = 'cp -f {} {}{}_{}'.format(diff_entity['fullpath'], self.diff_files_path, diff_entity['fullpath'].rsplit('/', 1)[1], md5sum)
                     log.debug('DIFF CMD:{}'.format(COPY_CMD))
                     os.system(COPY_CMD)
+
+        return True
 
     
     def get_network_session_list(self):
@@ -454,8 +499,13 @@ class DFbase():
         network_item = []
         network_dict = {}
 
-        p = Popen(NSENTER_CMD.format(self.pid), shell=True, stdout=PIPE, stderr=PIPE)
-        network_dump, stderr_data = p.communicate()
+        try:
+            p = Popen(NSENTER_CMD.format(self.pid), shell=True, stdout=PIPE, stderr=PIPE)
+            network_dump, stderr_data = p.communicate()
+        except Exception as e:
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
+            return False 
 
         network_lines = network_dump.decode('utf-8')
         network_lines = network_lines.split("\n")
@@ -468,7 +518,9 @@ class DFbase():
 
         for item in network_item:
             x = item.split(maxsplit=8)
-            log.debug('NETWORK:{}, {}, {}, {}, {}, {}, {},{},{}'.format(x[0], x[1],x[2],x[3],x[4], x[5],x[6],x[7],x[8]))
+            log.debug('{}[*]{} NETWORK:{}, {}, {}, {}, {}, {}, {},{},{}'
+                        .format(DFbase.LOG_DEBUG_COLOR,DFbase.LOG_INFO_COLOR,
+                        x[0], x[1],x[2],x[3],x[4], x[5],x[6],x[7],x[8]))
             network_dict['COMMAND'] = x[0]
             network_dict['PID'] = x[1]
             network_dict['USER'] = x[2]
@@ -480,51 +532,76 @@ class DFbase():
             network_dict['NAME'] = x[8]
 
             items_list.append(network_dict.copy())
-            #print(items_list)
 
         network_path = self.artifacts_path + '/' + 'network_session.json'
         with open(network_path, 'w') as f:
             json.dump(items_list, f, indent=4)
+
+        return True
     
+
     def get_timeinfo(self):
 
         items_list = []
         date_dict = {}
 
-        p = Popen(DOCKER_DATE_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
-        date_dump, stderr_data = p.communicate()
+        try:
+            p = Popen(DOCKER_DATE_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+            date_dump, stderr_data = p.communicate()
+        except Exception as e:
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
+            return False
 
         date_info = date_dump.decode('utf-8')
         date_info = date_info.strip("\r\n")
         date_dict['TIME'] = date_info
 
         items_list.append(date_dict)
-        log.debug(items_list)
+        log.debug('{}[*]{} timeinfo:{}'.format(DFbase.LOG_DEBUG_COLOR,
+                    DFbase.LOG_INFO_COLOR, items_list))
 
         date_path = self.artifacts_path + '/' + 'datetime.json'
         with open(date_path, 'w') as f:
             json.dump(items_list, f, indent=4)
+
+        return True
+
 
     def get_uptime(self):
 
         items_list = []
         uptime_dict = {}
 
-        p = Popen(DOCKER_UPTIME_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
-        uptime_dump, stderr_data = p.communicate()
+        try:
+            p = Popen(DOCKER_UPTIME_CMD.format(self.container_id), shell=True, stdout=PIPE, stderr=PIPE)
+            uptime_dump, stderr_data = p.communicate()
+        except Exception as e:
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
+            return False
 
         uptime_info = uptime_dump.decode('utf-8')
         uptime_info = uptime_info.strip("\r\n")
         uptime_dict['TIME'] = uptime_info
 
         items_list.append(uptime_dict)
-        log.debug(items_list)
+        log.debug('{}[*]{} uptime:{}'.format(DFbase.LOG_DEBUG_COLOR,
+                    DFbase.LOG_INFO_COLOR, items_list))
 
         uptime_path = self.artifacts_path + '/' + 'uptime.json'
         with open(uptime_path, 'w') as f:
             json.dump(items_list, f, indent=4)
 
+        return True
+
 
     def get_passwd_file(self):
-        p = Popen(DOCKER_CP_FROM_CONTAINER_TO_HOST_CMD.format(self.container_id, '/etc/passwd', self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
-        dump, stderr_data = p.communicate()
+        try:
+            p = Popen(DOCKER_CP_FROM_CONTAINER_TO_HOST_CMD.format(self.container_id, '/etc/passwd', self.artifacts_path), shell=True, stdout=PIPE, stderr=PIPE)
+            dump, stderr_data = p.communicate()
+        except Exception as e:
+            log.debug('{}[*]{} {}'.format(DFbase.LOG_ERROR_COLOR, 
+                        DFbase.LOG_INFO_COLOR, e))
+            return False
+        return True
