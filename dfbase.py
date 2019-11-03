@@ -31,8 +31,11 @@ AUFS_WHITEOUT_PREFIX = ".wh."
 
 HIDDEN_DIR_REGX = "^[.\s].*$"
 
-
 class DFbase():
+    LOG_ERROR_COLOR ='\x1b[31;1m'
+    LOG_WARNING_COLOR ='\x1b[33;1m'
+    LOG_INFO_COLOR ='\x1b[0m'
+    LOG_DEBUG_COLOR ='\x1b[35m;1m'
 
     def __init__(self):
         self.storage_driver = ""
@@ -53,18 +56,32 @@ class DFbase():
         return True if (os.getuid() == 0) else False
 
     def get_details_using_inspect_command(self, container_id):
+        """ To get detailed information about container using inspect command
+
+        * Only supported Storage drivers are OVERLAY,OVERLAY2 and AUFS
+
+        Args:
+            container_id (str): container id to be inspected
+        Returns
+            bool: True if successful, False otherwise.
+        """
 
         try:
             p = Popen(DOCKER_INSPECT_CMD.format(container_id), shell=True, stdout=PIPE, stderr=PIPE)
             data_dump, stderr_data = p.communicate()
 
-            # print(json.dumps(json.loads(data_dump), indent=4))
+            log.debug(json.dumps(json.loads(data_dump), indent=4))
 
         except Exception as e:
-            print(e)
+            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, e))
             return False
 
         self.data = json.loads(data_dump.decode('utf-8'))
+
+        if not self.data:
+            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, 'Please check if container id is valid'))
+            return False
+
         self.storage_driver = self.data[0]['Driver']
         self.pid = self.data[0]['State']['Pid']
         self.container_id = self.data[0]['Id']
@@ -82,24 +99,29 @@ class DFbase():
             log.debug('Driver:{}, ContainerDir:{}'.format(self.storage_driver,
                                                           '/var/lib/docker/containers/' + self.data[0]['Id']))
         else:
-            print('Not support')
-            pass
+            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, 'This storage driver does not support'))
+            False
 
         log.debug("container id : {}".format(self.container_id))
+        return True
 
 
     def setup_config(self):
-
-        self.artifacts_path = ""
-        self.executable_path = ""
-        self.diff_files_path = ""
+        """ To parse config.json file
+            Returns 
+                bool: True if successful, False otherwise.
+        """
 
         try:
             with open('config.json') as f:
                 config = json.load(f)
+        except FileNotFoundError as e:
+            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, e))
+            print('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, 
+                            'Please copy config.json.example to confing.json'))
+            return False
         except Exception as e:
-            print(e)
-            log.debug(e)
+            log.debug('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, e))
             return False
 
         self.artifacts_path = config['ARTIFACTS']['BASE_PATH'].format(self.container_id)
@@ -109,23 +131,13 @@ class DFbase():
         self.diff_files_path = self.diff_files_path.replace('BASE_PATH', self.artifacts_path)
         self.log_journald = (True if config['ARTIFACTS']['LOG_JOURNALD_SERVICE'] == "TRUE" else False)
 
-        if not os.path.exists(self.artifacts_path):
-            os.makedirs(self.artifacts_path, mode=0o700)
-        elif not os.path.isdir(self.artifacts_path):
-            log.debug('[Error]' + self.artifacts_path +' is not a directory')
-            return False
+        for x_path in [self.artifacts_path, 
+                       self.executable_path,
+                       self.diff_files_path]:
+            if not os.path.exists(x_path):
+                os.makedirs(x_path, mode=0o700)
 
-        if not os.path.exists(self.executable_path):
-            os.makedirs(self.executable_path, mode=0o700)
-        elif not os.path.isdir(self.executable_path):
-            log.debug('[Error]' + self.executable_path +' is not a directory')
-            return False
-
-        if not os.path.exists(self.diff_files_path):
-            os.makedirs(self.diff_files_path, mode=0o700)
-        elif not os.path.isdir(self.diff_files_path):
-            log.debug('[Error]' + self.diff_files_path +' is not a directory')
-            return False
+        return True
 
     def save_inspect_for_container(self):
         inspect_output = self.artifacts_path + '/' + 'inspect_command.json'
@@ -133,7 +145,9 @@ class DFbase():
             json.dump(self.data, f, indent=4)
 
     def get_processes_list_within_container(self):
-        '''
+        """ Get process list within container
+            Retruns
+                List: dictionary type of process list
         [
             {
                 "Id": "31df7fe258be4c78ca0a15cd7903ead5f4ba3ff3f63a0755a3da00fbc39e2ea2",
@@ -150,7 +164,7 @@ class DFbase():
                     "FinishedAt": "2018-08-26T12:23:24.546575093Z"
             },
 
-        '''
+        """
         items_list = []
         proc_item = []
         procs_dict = {}

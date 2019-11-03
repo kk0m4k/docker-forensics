@@ -3,12 +3,7 @@
 __author__  = "Kim, Taehoon(kimfrancesco@gmail.com)"
 
 
-import os
-import stat
-import json
 import argparse
-import time
-from subprocess import Popen, PIPE
 from dfbase import DFbase
 from dflogging import *
 
@@ -18,28 +13,33 @@ banner = """
 (____/ \__/  \___)(__\_)(____)(__\_)  (__)  \__/(__\_)(____)\_)__)(____/(__)\___)(____/        
  """
 
-class DockerForensics(DFbase):
-    """
-    Docker forensics
-    """
-    def __init__(self):
-        super().__init__()
-
-
 def main():
+    """
+        After creating an object from the class defined in the DFbase module,
+        collect it by calling the object method for collecting the artifact.
+    """
+
     print(banner)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--container_id', required=True, action='store')
+    parser.add_argument('-i', '--container_id',
+                            required=True, action='store',
+                            help='Please specifiy container id you want \
+                            to collect artifacts.')
     args = parser.parse_args()
 
-    df = DockerForensics()
-    if df.check_privilege() is False:
-        print('This script should be run with root privilege')
+    df = DFbase()
+
+    if not df.check_privilege():
+        print('{}[*] {}'.format(DFbase.LOG_ERROR_COLOR, \
+                                'This script should be'
+                                'run with root privilege'))
         exit(0)
 
-    df.get_details_using_inspect_command(args.container_id)
+    if not df.get_details_using_inspect_command(args.container_id):
+        exit(0)
 
-    if df.setup_config() is False:
+    if not df.setup_config():
         exit(0)
 
     df.save_inspect_for_container()
